@@ -42,6 +42,8 @@ public class UsbGadget {
         String[] commands = {
                 "mkdir " + gadgetPath,
                 "cd " + gadgetPath,
+                Command.echoToFile("", "UDC"), // disable device
+                /*
                 Command.echoToFile(params.idProduct, "idProduct"),
                 Command.echoToFile(params.idVendor, "idVendor"),
                 Command.echoToFile("239", "bDeviceClass"),
@@ -55,7 +57,7 @@ public class UsbGadget {
                 "mkdir configs/c.1",
                 "mkdir configs/c.1/strings/0x409",
                 Command.echoToFile(params.configName, "configs/c.1/strings/0x409/configuration"),
-                Command.echoToFile(String.valueOf(params.maxPowerMa), "configs/c.1/MaxPower"),
+                Command.echoToFile(String.valueOf(params.maxPowerMa), "configs/c.1/MaxPower"),*/
         };
 
         su.addCommand(commands);
@@ -64,10 +66,23 @@ public class UsbGadget {
         for (UsbGadgetFunction function : this.functions)
             if (!function.create(su))
                 return false;
+        ///////// reenable device
+        String[] drivers = SUExtensions.ls(su, "/sys/class/udc");
+        if (drivers == null || drivers.length != 1) {
+            return false;
+        }
+        String udc = drivers[0];
+        String[] commands2 = {
+            Command.echoToFile(udc, "UDC"),
+        };
+        su.addCommand(commands2);
+        su.waitForIdle();
+        ////////
         return true;
     }
 
     public boolean bind(Shell.Interactive su) {
+        /*
         if (isBound)
             return false;
 
@@ -103,12 +118,13 @@ public class UsbGadget {
         for (UsbGadgetFunction function : this.functions)
             if (!function.bind(su))
                 return false;
-
+        */
         this.isBound = true;
         return true;
     }
 
     public boolean remove(Shell.Interactive su) {
+        /*
         if (!isBound)
             return false;
 
@@ -144,6 +160,7 @@ public class UsbGadget {
         su.waitForIdle();
 
         this.isBound = false;
+        */
         return true;
     }
 }

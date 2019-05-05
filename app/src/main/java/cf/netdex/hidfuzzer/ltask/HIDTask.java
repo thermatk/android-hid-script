@@ -76,7 +76,7 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
             120
     );
 
-    private UsbGadgetFunctionHidParameters usbGadgetFcnHidParams = new UsbGadgetFunctionHidParameters(
+    private UsbGadgetFunctionHidParameters usbGadgetFcnHidParamsKB = new UsbGadgetFunctionHidParameters(
             1,
             1,
             8,
@@ -115,6 +115,40 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
                     (byte) 0xc0                  /* END_COLLECTION                         */
             }
     );
+    private UsbGadgetFunctionHidParameters usbGadgetFcnHidParamsMS = new UsbGadgetFunctionHidParameters(
+            2,
+            1,
+            4,
+            new byte[]{
+                    (byte) 0x05, (byte) 0x01,  //Usage Page(Generic Desktop Controls)
+                    (byte) 0x09, (byte) 0x02,  //Usage (Mouse)
+                    (byte) 0xa1, (byte) 0x01,  //Collection (Application)
+                    (byte) 0x09, (byte) 0x01,  //Usage (pointer)
+                    (byte) 0xa1, (byte) 0x00,  //Collection (Physical)
+                    (byte) 0x05, (byte) 0x09,  //Usage Page (Button)
+                    (byte) 0x19, (byte) 0x01,  //Usage Minimum(1)
+                    (byte) 0x29, (byte) 0x05,  //Usage Maximum(5)
+                    (byte) 0x15, (byte) 0x00,  //Logical Minimum(1)
+                    (byte) 0x25, (byte) 0x01,  //Logical Maximum(1)
+                    (byte) 0x95, (byte) 0x05,  //Report Count(5)
+                    (byte) 0x75, (byte) 0x01,  //Report Size(1)
+                    (byte) 0x81, (byte) 0x02,  //Input(Data,Variable,Absolute,BitField)
+                    (byte) 0x95, (byte) 0x01,  //Report Count(1)
+                    (byte) 0x75, (byte) 0x03,  //Report Size(3)
+                    (byte) 0x81, (byte) 0x01,  //Input(Constant,Array,Absolute,BitField)
+                    (byte) 0x05, (byte) 0x01,  //Usage Page(Generic Desktop Controls)
+                    (byte) 0x09, (byte) 0x30,  //Usage(x)
+                    (byte) 0x09, (byte) 0x31,  //Usage(y)
+                    (byte) 0x09, (byte) 0x38,  //Usage(Wheel)
+                    (byte) 0x15, (byte) 0x81,  //Logical Minimum(-127)
+                    (byte) 0x25, (byte) 0x7F,  //Logical Maximum(127)
+                    (byte) 0x75, (byte) 0x08,  //Report Size(8)
+                    (byte) 0x95, (byte) 0x03,  //Report Count(3)
+                    (byte) 0x81, (byte) 0x06,  //Input(Data,Variable,Relative,BitField)
+                    (byte) 0xc0,  //End Collection
+                    (byte) 0xc0  //End Collection
+            }
+    );
 
     private UsbGadget usbGadget = null;
 
@@ -123,16 +157,20 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         mUserIO.clear();
 
         // I don't know why but apparently you can't initialize SU shell on UI thread
+        Log.d("HIDDD","IN BACKGROUND HIDTASK");
         mSU = createSU();
         if (mSU == null) {
             mUserIO.log("<b>! Failed to obtain SU !</b>");
             return null;
         }
         if (SUExtensions.pathExists(mSU, "/config")) {
+            Log.d("HIDDD","INCONFIGFS BEGIN");
             Log.i(TAG, "No kernel patch detected, using configfs");
             usbGadget = new UsbGadget(usbGadgetParams, "g1", "/config");
-            UsbGadgetFunctionHid fcnHid = new UsbGadgetFunctionHid(0, usbGadgetFcnHidParams);
-            usbGadget.addFunction(fcnHid);
+            UsbGadgetFunctionHid fcnHidKB = new UsbGadgetFunctionHid(0, usbGadgetFcnHidParamsKB);
+            usbGadget.addFunction(fcnHidKB);
+            UsbGadgetFunctionHid fcnHidMS = new UsbGadgetFunctionHid(1, usbGadgetFcnHidParamsMS);
+            usbGadget.addFunction(fcnHidMS);
 //                usbGadgetFcnStorParams =
 //                        new UsbGadgetFunctionMassStorageParameters(
 //                                /*getContext().getFilesDir().getAbsolutePath() + */"/data/local/tmp/mass_storage-lun0.img",
@@ -142,7 +180,10 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
 //                        new UsbGadgetFunctionMassStorage(1, usbGadgetFcnStorParams);
 //                usbGadget.addFunction(fcnStor);
             usbGadget.create(mSU);
+
+            Log.d("HIDDD","INCONFIGFS AFTERCREATE");
             if (!usbGadget.bind(mSU)) {
+                Log.d("HIDDD","INCONFIGFS COULDNTBIND");
                 mUserIO.log("<b>Could not bind usb gadget</b>");
                 return null;
             }
@@ -152,16 +193,16 @@ public class HIDTask extends AsyncTask<Void, HIDTask.RunState, Void> {
         }
 
         mSU.addCommand("chmod 666 " + DEV_KEYBOARD);
-        //mSU.addCommand("chmod 666 " + DEV_MOUSE);
+        mSU.addCommand("chmod 666 " + DEV_MOUSE);
 
         mH = new HIDR(mSU, DEV_KEYBOARD, "" /*DEV_MOUSE*/);
         mUserIO.log("<b>-- Started <i>" + mName + "</i></b>");
         run();
         mUserIO.log("<b>-- Ended <i>" + mName + "</i></b>");
-        if (usbGadget != null) {
+        /*if (usbGadget != null) {
             usbGadget.remove(mSU);
             usbGadget = null;
-        }
+        }*/
         return null;
     }
 
